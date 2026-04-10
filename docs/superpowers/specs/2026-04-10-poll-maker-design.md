@@ -162,10 +162,24 @@ Public respondent page:
 
 Use Tailwind CSS with a clean, focused-pages visual direction: editorial cards, clear form rhythm, strong action buttons, and a mobile-first respondent wizard. Avoid a generic dashboard layout for v1.
 
+## Localization
+
+Use a small dictionary-based i18n layer for English and Russian UI text.
+
+- Store UI dictionaries in `src/client/i18n/en.ts` and `src/client/i18n/ru.ts`.
+- Expose a typed `t(key)` helper through a lightweight Preact provider/hook.
+- Detect the initial language from `navigator.language`, using Russian for `ru*` locales and English otherwise.
+- Add an `EN/RU` language toggle in the app shell and persist the selected language in `localStorage`.
+- Translate app chrome, buttons, labels, validation messages, empty states, and table/export UI.
+- Do not translate user-created poll names, poll details, question text, options, or answers.
+- Backend validation responses should include stable error codes such as `POLL_NAME_REQUIRED`, and the frontend should map those codes to localized messages.
+- CSV export may localize column headers through `?lang=en` or `?lang=ru`, with English as fallback.
+
 ## Testing
 
 - Unit tests for poll question validation.
 - Unit tests for answer validation.
+- Unit tests for language detection, dictionary fallback, and backend error-code localization.
 - API tests for session creation, poll create/read/update, admin hash rejection and acceptance, draft upsert, final submit, and CSV export.
 - Frontend/component tests for create validation, admin copy URL rendering, and respondent wizard local draft restoration.
 - End-to-end smoke test: create poll, open public URL, answer through the wizard, submit, confirm the result appears in admin view, and export CSV.
