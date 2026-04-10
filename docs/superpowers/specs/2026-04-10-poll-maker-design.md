@@ -170,7 +170,7 @@ Use focused pages, not an admin-dashboard layout.
 
 Markdown editing:
 
-- Use `https://github.com/mikhail-angelov/microMDEditor` as the markdown editor component for v1.
+- Use the npm package `micro-md-editor` as the markdown editor component for v1.
 - Use it for poll details editing.
 - Use it for the markdown-like question editor so creators can write the question format in one editor.
 - Keep parsing and validation in local app code rather than depending on the editor component for poll-question semantics.
@@ -178,8 +178,8 @@ Markdown editing:
 Create/update page:
 
 - Poll name input.
-- `microMDEditor`-backed poll details editor.
-- `microMDEditor`-backed markdown-like question editor using the poll question UI format.
+- `micro-md-editor`-backed poll details editor.
+- `micro-md-editor`-backed markdown-like question editor using the poll question UI format.
 - Validation messages.
 - Parsed question preview.
 - Create/Update and Clear buttons.
