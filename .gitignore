@@ -4,3 +4,13 @@ dist/
 .env
 *.db
 *.sqlite
+test-results/
+playwright-report/
+poll-maker.sqlite
+node_modules/
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+
