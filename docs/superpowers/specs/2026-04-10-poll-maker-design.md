@@ -18,6 +18,7 @@ Build a greenfield web app for creating, publishing, answering, editing, and exp
 - No username/password login for v1.
 - No hosted database or external persistence for v1.
 - No drag-and-drop/form-based question builder for v1.
+- No raw JSON question editor for v1; creators use the markdown-like question format described below.
 - No per-poll password or role-based access control for v1.
 
 ## Architecture
@@ -71,6 +72,8 @@ The backend upserts one answer row per `poll_id` and respondent `user_id`. A fin
 
 ## Poll Question Format
 
+The backend stores each poll question as JSON:
+
 ```ts
 {
   name: string;
@@ -83,13 +86,54 @@ The backend upserts one answer row per `poll_id` and respondent `user_id`. A fin
 
 `optional` and `multiselect` default to `false`.
 
+The creator UI accepts a markdown-like text format and converts it into the stored JSON array. Each question block uses this shape:
+
+```md
+# <name>
+## <question>
+[] optional
+[] multiselect
+- option 1
+- option 2
+```
+
+Rules:
+
+- `# <name>` starts a new question and maps to `name`.
+- Multiple questions are represented by repeated `# <name>` blocks in the same editor.
+- `## <question>` maps to `question`.
+- `[] optional` means `optional: false`; `[x] optional` means `optional: true`.
+- `[] multiselect` means `multiselect: false`; `[x] multiselect` means `multiselect: true`.
+- Option lines start with `- ` and map to `options`.
+- `text` and `текст` remain special option values that enable a free-form text field.
+- Missing optional/multiselect lines default to `false`.
+
+Valid free-text question:
+
+```md
+# Id
+## Type your email
+- text
+```
+
+Valid multi-select question with free text:
+
+```md
+# Subjects
+## What subjects do you have
+[x] multiselect
+- Math
+- Literature
+- text
+```
+
 ## Validation
 
 Poll validation:
 
 - `name` is required after trimming.
 - `details` is required after trimming.
-- `questions` must parse as a non-empty JSON array.
+- Creator question text must parse into a non-empty question array.
 - Each question requires non-empty `name`, non-empty `question`, and a non-empty `options` array.
 - Every option must be a non-empty string.
 - `optional` and `multiselect` must be booleans when present.
@@ -128,7 +172,7 @@ Create/update page:
 
 - Poll name input.
 - `microMDEditor`-backed poll details editor.
-- JSON question-array editor.
+- Markdown-like question editor using the poll question UI format.
 - Validation messages.
 - Parsed question preview.
 - Create/Update and Clear buttons.
