@@ -173,7 +173,7 @@ Use a small dictionary-based i18n layer for English and Russian UI text.
 - Translate app chrome, buttons, labels, validation messages, empty states, and table/export UI.
 - Do not translate user-created poll names, poll details, question text, options, or answers.
 - Backend validation responses should include stable error codes such as `POLL_NAME_REQUIRED`, and the frontend should map those codes to localized messages.
-- CSV export may localize column headers through `?lang=en` or `?lang=ru`, with English as fallback.
+- CSV export should use stable English column headers and does not need localization in v1.
 
 ## Testing
 
