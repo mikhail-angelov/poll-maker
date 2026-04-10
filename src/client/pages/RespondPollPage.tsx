@@ -8,6 +8,10 @@ interface RespondPollPageProps {
   pollId: string;
 }
 
+function isTextOption(option: string) {
+  return option === 'text' || option === 'текст';
+}
+
 export function RespondPollPage({ pollId }: RespondPollPageProps) {
   const { t } = useI18n();
   const [poll, setPoll] = useState<{ name: string; details: string; questions: PollQuestion[] } | null>(null);
@@ -106,12 +110,25 @@ export function RespondPollPage({ pollId }: RespondPollPageProps) {
     saveDraftToStorage();
   };
 
-  const handleTextChange = (questionIndex: number, text: string) => {
+  const handleTextChange = (questionIndex: number, text: string, textOption?: string) => {
+    const question = poll?.questions[questionIndex];
     const currentAnswer = answers[String(questionIndex)] || {};
+    let selectedOptions = currentAnswer.selectedOptions;
+
+    if (question && textOption) {
+      const otherSelectedOptions = (currentAnswer.selectedOptions || []).filter(option => option !== textOption);
+      if (text.trim()) {
+        selectedOptions = question.multiselect ? [...otherSelectedOptions, textOption] : [textOption];
+      } else {
+        selectedOptions = otherSelectedOptions;
+      }
+    }
+
     const newAnswers = {
       ...answers,
       [String(questionIndex)]: {
         ...currentAnswer,
+        selectedOptions,
         text
       }
     };
@@ -210,6 +227,7 @@ export function RespondPollPage({ pollId }: RespondPollPageProps) {
   const currentQuestion = poll.questions[currentIndex];
   const currentAnswer = answers[String(currentIndex)] || {};
   const hasText = hasTextOption(currentQuestion);
+  const onlyTextOption = currentQuestion.options.length === 1 && isTextOption(currentQuestion.options[0]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -250,9 +268,17 @@ export function RespondPollPage({ pollId }: RespondPollPageProps) {
 
         {/* Options */}
         <div className="space-y-3">
-          {currentQuestion.options.map((option, optionIndex) => {
+          {onlyTextOption ? (
+            <input
+              type="text"
+              value={currentAnswer.text || ''}
+              onInput={(e) => handleTextChange(currentIndex, (e.target as HTMLInputElement).value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moss focus:border-transparent"
+              placeholder="Enter your answer..."
+            />
+          ) : currentQuestion.options.map((option, optionIndex) => {
             const isSelected = currentAnswer.selectedOptions?.includes(option) || false;
-            const isTextOption = option === 'text' || option === 'текст';
+            const isFreeTextOption = isTextOption(option);
 
             return (
               <div key={optionIndex} className="flex items-start gap-3">
@@ -279,14 +305,14 @@ export function RespondPollPage({ pollId }: RespondPollPageProps) {
                   className="flex-1 cursor-pointer"
                 >
                   <div className="font-medium">{option}</div>
-                  {isTextOption && isSelected && (
+                  {isFreeTextOption && (
                     <div className="mt-2">
-                      <textarea
+                      <input
+                        type="text"
                         value={currentAnswer.text || ''}
-                        onChange={(e) => handleTextChange(currentIndex, (e.target as HTMLTextAreaElement).value)}
+                        onInput={(e) => handleTextChange(currentIndex, (e.target as HTMLInputElement).value, option)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moss focus:border-transparent"
                         placeholder="Enter your answer..."
-                        rows={3}
                       />
                     </div>
                   )}

@@ -1,8 +1,18 @@
 import { createDb } from './client';
+import type sqlite3 from 'sqlite3';
 
-export async function migrate(db: any) {
+function run(db: sqlite3.Database, sql: string) {
+  return new Promise<void>((resolve, reject) => {
+    db.run(sql, (error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
+export async function migrate(db: sqlite3.Database) {
   // Create polls table
-  await db.run(`
+  await run(db, `
     CREATE TABLE IF NOT EXISTS polls (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -18,19 +28,19 @@ export async function migrate(db: any) {
   `);
 
   // Create polls_poll_id_idx unique index
-  await db.run(`
+  await run(db, `
     CREATE UNIQUE INDEX IF NOT EXISTS polls_poll_id_idx 
     ON polls(poll_id)
   `);
 
   // Create polls_admin_hash_idx unique index
-  await db.run(`
+  await run(db, `
     CREATE UNIQUE INDEX IF NOT EXISTS polls_admin_hash_idx 
     ON polls(admin_hash)
   `);
 
   // Create answers table
-  await db.run(`
+  await run(db, `
     CREATE TABLE IF NOT EXISTS answers (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -45,7 +55,7 @@ export async function migrate(db: any) {
   `);
 
   // Create answers_poll_user_idx unique index
-  await db.run(`
+  await run(db, `
     CREATE UNIQUE INDEX IF NOT EXISTS answers_poll_user_idx 
     ON answers(poll_id, user_id)
   `);
@@ -55,7 +65,7 @@ export async function migrate(db: any) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const db = createDb();
-  migrate(db.db)
+  migrate(db.sqlite)
     .then(() => {
       console.log('Migration script completed');
       process.exit(0);

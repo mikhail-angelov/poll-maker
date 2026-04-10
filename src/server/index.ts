@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 async function main() {
   // Create and migrate database
   const db = createDb();
-  await migrate(db.db);
+  await migrate(db.sqlite);
   console.log('Database initialized');
 
   // Create Express app

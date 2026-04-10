@@ -35,6 +35,11 @@ export function AdminPollPage({ pollHash }: AdminPollPageProps) {
     navigator.clipboard.writeText(text);
   };
 
+  const handleEditPoll = () => {
+    // Navigate to edit page with poll data
+    window.location.href = `/?edit=${pollHash}`;
+  };
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -133,6 +138,16 @@ export function AdminPollPage({ pollHash }: AdminPollPageProps) {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Edit Poll Button */}
+      <div className="mb-8">
+        <button
+          onClick={handleEditPoll}
+          className="px-6 py-3 bg-clay text-white rounded-lg font-medium hover:bg-clay/90"
+        >
+          {t('admin.editPoll')}
+        </button>
       </div>
 
       {/* Results Table */}

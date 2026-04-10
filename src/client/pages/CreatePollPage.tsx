@@ -1,9 +1,9 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { useI18n } from '../i18n';
-import { createPoll } from '../api';
+import { createPoll, getAdminPoll, updateAdminPoll } from '../api';
 import { parseQuestionFormat, serializeQuestionFormat } from '../../shared/questionFormat';
 import { validatePollInput } from '../../shared/validation';
-import { MarkdownEditor } from '../components/MarkdownEditor';
+import {  MicroMDEditor } from 'micro-md-editor/preact';
 
 const DEFAULT_QUESTION_TEXT = `# Id
 ## Type your email
@@ -17,13 +17,43 @@ const DEFAULT_QUESTION_TEXT = `# Id
 - Literature
 - text`;
 
-export function CreatePollPage() {
+interface CreatePollPageProps {
+  editPollHash?: string;
+}
+
+export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [details, setDetails] = useState('');
   const [questionText, setQuestionText] = useState(DEFAULT_QUESTION_TEXT);
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load poll data if in edit mode
+  useEffect(() => {
+    if (editPollHash) {
+      loadPollForEdit();
+    }
+  }, [editPollHash]);
+
+  const loadPollForEdit = async () => {
+    try {
+      setIsLoading(true);
+      const result = await getAdminPoll(editPollHash!);
+      setName(result.poll.name);
+      setDetails(result.poll.details);
+      
+      // Parse questions from poll data
+      const questionsText = serializeQuestionFormat(result.poll.questions);
+      setQuestionText(questionsText);
+    } catch (err) {
+      console.error('Error loading poll for edit:', err);
+      setErrors(['Failed to load poll data']);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -39,12 +69,27 @@ export function CreatePollPage() {
       }
 
       setIsSubmitting(true);
-      const result = await createPoll({ name, details, questions: questionText });
       
-      // Navigate to admin page
-      window.location.href = result.adminUrl;
-    } catch (error) {
-      console.error('Error creating poll:', error);
+      if (editPollHash) {
+        // Update existing poll
+        await updateAdminPoll(editPollHash, { 
+          name, 
+          details, 
+          questions: questionText,
+          active: true // Keep poll active when updating
+        });
+        
+        // Navigate back to admin page after update
+        window.location.href = `/admin/${editPollHash}`;
+      } else {
+        // Create new poll
+        const result = await createPoll({ name, details, questions: questionText });
+        
+        // Navigate to admin page
+        window.location.href = result.adminUrl;
+      }
+    } catch (error: any) {
+      console.error('Error saving poll:', error);
       try {
         const errorData = JSON.parse(error.message);
         setErrors(errorData.errors || ['INTERNAL_SERVER_ERROR']);
@@ -71,9 +116,22 @@ export function CreatePollPage() {
     }
   })();
 
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-moss mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading poll data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-ink">{t('create.title')}</h1>
+      <h1 className="text-3xl font-bold mb-8 text-ink">
+        {editPollHash ? t('create.editTitle') : t('create.title')}
+      </h1>
       
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Poll Name */}
@@ -95,11 +153,13 @@ export function CreatePollPage() {
           <label className="block text-sm font-medium mb-2 text-ink">
             {t('create.details')}
           </label>
-          <MarkdownEditor
-            label={t('create.details')}
-            value={details}
-            onChange={setDetails}
-          />
+          <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
+            <MicroMDEditor
+              initialMarkdown={'details'}
+              onChange={setDetails}
+              className="min-h-[200px]"
+            />
+          </div>
         </div>
 
         {/* Questions Editor */}
@@ -107,11 +167,13 @@ export function CreatePollPage() {
           <label className="block text-sm font-medium mb-2 text-ink">
             {t('create.questions')}
           </label>
-          <MarkdownEditor
-            label={t('create.questions')}
-            value={questionText}
-            onChange={setQuestionText}
-          />
+          <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
+            <MicroMDEditor
+              initialMarkdown={`Enter ${t('create.questions').toLowerCase()}...`}
+              onChange={setQuestionText}
+              className="min-h-[300px]"
+            />
+          </div>
           <div className="mt-2 text-sm text-gray-600">
             Format: # Question Name ## Question Text [] optional [x] multiselect - Option 1 - Option 2
           </div>
@@ -156,7 +218,9 @@ export function CreatePollPage() {
             disabled={isSubmitting}
             className="px-6 py-3 bg-moss text-white rounded-lg font-medium hover:bg-moss/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Creating...' : t('create.submit')}
+            {isSubmitting 
+              ? (editPollHash ? 'Updating...' : 'Creating...') 
+              : (editPollHash ? t('create.update') : t('create.submit'))}
           </button>
           <button
             type="button"
@@ -165,6 +229,15 @@ export function CreatePollPage() {
           >
             {t('create.clear')}
           </button>
+          {editPollHash && (
+            <button
+              type="button"
+              onClick={() => window.location.href = `/admin/${editPollHash}`}
+              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
+            >
+              {t('create.cancel')}
+            </button>
+          )}
         </div>
       </form>
     </div>

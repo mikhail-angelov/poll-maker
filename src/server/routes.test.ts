@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from './routes';
 import { createDb } from './db/client';
 import { migrate } from './db/migrate';
+import { answers, polls } from './db/schema';
 
 describe('API Foundation', () => {
   let app: any;
@@ -10,7 +11,7 @@ describe('API Foundation', () => {
 
   beforeAll(async () => {
     db = createDb(':memory:');
-    await migrate(db.db);
+    await migrate(db.sqlite);
     app = createApp(db);
   });
 
@@ -20,8 +21,8 @@ describe('API Foundation', () => {
 
   beforeEach(async () => {
     // Clear tables before each test
-    await db.db.run('DELETE FROM polls');
-    await db.db.run('DELETE FROM answers');
+    await db.db.delete(answers);
+    await db.db.delete(polls);
   });
 
   describe('GET /api/session', () => {
@@ -34,6 +35,21 @@ describe('API Foundation', () => {
       expect(response.body).toHaveProperty('userId');
       expect(response.body.userId).toHaveLength(20);
       expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie'][0]).toContain('poll_maker_session=');
+    });
+
+    it('replaces a blank session cookie with a new userId', async () => {
+      const blankUserId = ' '.repeat(20);
+
+      const response = await request(app)
+        .get('/api/session')
+        .set('Cookie', `poll_maker_session=${blankUserId}`)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body.userId).toHaveLength(20);
+      expect(response.body.userId.trim()).toHaveLength(20);
+      expect(response.body.userId).not.toBe(blankUserId);
       expect(response.headers['set-cookie'][0]).toContain('poll_maker_session=');
     });
   });

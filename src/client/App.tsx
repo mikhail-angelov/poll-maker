@@ -22,6 +22,11 @@ function LanguageToggle() {
 function AppContent() {
   const { t } = useI18n();
   const [path] = useState(() => window.location.pathname);
+  const [search] = useState(() => window.location.search);
+
+  // Check for edit mode in query params
+  const urlParams = new URLSearchParams(search);
+  const editPollHash = urlParams.get('edit');
 
   // Simple routing based on path
   if (path.startsWith('/admin/')) {
@@ -44,11 +49,11 @@ function AppContent() {
     );
   }
 
-  // Default to create page
+  // Default to create page (with optional edit mode)
   return (
     <>
       <LanguageToggle />
-      <CreatePollPage />
+      <CreatePollPage editPollHash={editPollHash || undefined} />
     </>
   );
 }

@@ -1,10 +1,12 @@
 import express, { type Request, type Response } from 'express';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { sessionMiddleware, type SessionRequest } from './session';
+import { sessionMiddleware } from './session';
 import { parseQuestionFormat, serializeQuestionFormat } from '../shared/questionFormat';
 import { validatePollInput, validateAnswers } from '../shared/validation';
 import { errorCodes } from '../shared/errorCodes';
 import type { PollQuestion, AnswerMap } from '../shared/types';
+import { answers as answersTable, polls as pollsTable } from './db/schema';
 import type { Db } from './db/client';
 import { toCsv } from './csv';
 
@@ -20,6 +22,10 @@ export function createApp(db: Db) {
     res.status(status).json({ errors });
   }
 
+  function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
   // Helper to require admin poll
   async function requireAdminPoll(req: Request, res: Response) {
     const adminHash = req.headers['x-poll-admin-hash'] as string;
@@ -28,9 +34,11 @@ export function createApp(db: Db) {
       return null;
     }
 
-    const poll = await db.db.get(`
-      SELECT * FROM polls WHERE admin_hash = ?
-    `, [adminHash]);
+    const [poll] = await db.db
+      .select()
+      .from(pollsTable)
+      .where(eq(pollsTable.adminHash, adminHash))
+      .limit(1);
 
     if (!poll) {
       sendError(res, 403, [errorCodes.ADMIN_HASH_INVALID]);
@@ -41,12 +49,12 @@ export function createApp(db: Db) {
   }
 
   // GET /api/session
-  app.get('/api/session', (req: SessionRequest, res: Response) => {
+  app.get('/api/session', (req: Request, res: Response) => {
     res.json({ userId: req.userId });
   });
 
   // POST /api/polls
-  app.post('/api/polls', async (req: SessionRequest, res: Response) => {
+  app.post('/api/polls', async (req: Request, res: Response) => {
     try {
       const { name, details, questions: questionText } = req.body;
       
@@ -59,7 +67,7 @@ export function createApp(db: Db) {
       try {
         questions = parseQuestionFormat(questionText);
       } catch (error) {
-        return sendError(res, 400, [error.message || 'QUESTION_FORMAT_INVALID']);
+        return sendError(res, 400, [errorMessage(error, 'QUESTION_FORMAT_INVALID')]);
       }
 
       // Validate poll input
@@ -74,11 +82,18 @@ export function createApp(db: Db) {
       const adminHash = nanoid(20);
       const now = new Date().toISOString();
 
-      // Insert poll into database using raw SQL since drizzle proxy might have issues
-      await db.db.run(`
-        INSERT INTO polls (id, user_id, poll_id, admin_hash, name, details, questions, active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, req.userId, pollId, adminHash, name.trim(), details.trim(), JSON.stringify(questions), 1, now, now]);
+      await db.db.insert(pollsTable).values({
+        id,
+        userId: req.userId,
+        pollId,
+        adminHash,
+        name: name.trim(),
+        details: details.trim(),
+        questions: JSON.stringify(questions),
+        active: true,
+        createdAt: now,
+        updatedAt: now
+      });
 
       // Return response
       res.status(201).json({
@@ -96,14 +111,20 @@ export function createApp(db: Db) {
   // GET /api/polls/:pollId
   app.get('/api/polls/:pollId', async (req: Request, res: Response) => {
     try {
-      const { pollId } = req.params;
+      const pollId = req.params.pollId as string;
       
-      // Find poll by pollId using raw SQL
-      const result = await db.db.get(`
-        SELECT id, poll_id, name, details, questions, active
-        FROM polls 
-        WHERE poll_id = ?
-      `, [pollId]);
+      const [result] = await db.db
+        .select({
+          id: pollsTable.id,
+          pollId: pollsTable.pollId,
+          name: pollsTable.name,
+          details: pollsTable.details,
+          questions: pollsTable.questions,
+          active: pollsTable.active
+        })
+        .from(pollsTable)
+        .where(eq(pollsTable.pollId, pollId))
+        .limit(1);
       
       if (!result) {
         return sendError(res, 404, [errorCodes.POLL_NOT_FOUND]);
@@ -115,11 +136,11 @@ export function createApp(db: Db) {
       // Return public poll data (without adminHash and userId)
       res.json({
         id: result.id,
-        pollId: result.poll_id,
+        pollId: result.pollId,
         name: result.name,
         details: result.details,
         questions,
-        active: result.active === 1
+        active: result.active
       });
     } catch (error) {
       console.error('Error fetching poll:', error);
@@ -134,22 +155,25 @@ export function createApp(db: Db) {
       if (!poll) return;
 
       // Get submitted answers count
-      const answersResult = await db.db.all(`
-        SELECT COUNT(*) as count FROM answers 
-        WHERE poll_id = ? AND status = 'submitted'
-      `, [poll.poll_id]);
+      const [answersResult] = await db.db
+        .select({ count: count() })
+        .from(answersTable)
+        .where(and(eq(answersTable.pollId, poll.pollId), eq(answersTable.status, 'submitted')));
 
-      const submittedCount = answersResult[0]?.count || 0;
+      const submittedCount = answersResult?.count || 0;
       const questions = JSON.parse(poll.questions);
 
-      // Get recent submitted answers for display
-      const recentAnswers = await db.db.all(`
-        SELECT time, user_info, answers, status
-        FROM answers 
-        WHERE poll_id = ? AND status = 'submitted'
-        ORDER BY created_at DESC
-        LIMIT 50
-      `, [poll.poll_id]);
+      const recentAnswers = await db.db
+        .select({
+          time: answersTable.time,
+          userInfo: answersTable.userInfo,
+          answers: answersTable.answers,
+          status: answersTable.status
+        })
+        .from(answersTable)
+        .where(and(eq(answersTable.pollId, poll.pollId), eq(answersTable.status, 'submitted')))
+        .orderBy(desc(answersTable.createdAt))
+        .limit(50);
 
       const results = recentAnswers.map((row: any) => {
         const answers = JSON.parse(row.answers);
@@ -159,7 +183,7 @@ export function createApp(db: Db) {
 
         return {
           time: row.time,
-          user_info: row.user_info,
+          user_info: row.userInfo,
           answered_questions: answeredCount,
           answers: JSON.stringify(answers)
         };
@@ -168,11 +192,11 @@ export function createApp(db: Db) {
       res.json({
         poll: {
           id: poll.id,
-          pollId: poll.poll_id,
+          pollId: poll.pollId,
           name: poll.name,
           details: poll.details,
           questions,
-          active: poll.active === 1
+          active: poll.active
         },
         summary: {
           questionCount: questions.length,
@@ -203,7 +227,7 @@ export function createApp(db: Db) {
           questions = parseQuestionFormat(questionText);
           updatedQuestions = JSON.stringify(questions);
         } catch (error) {
-          return sendError(res, 400, [error.message || 'QUESTION_FORMAT_INVALID']);
+          return sendError(res, 400, [errorMessage(error, 'QUESTION_FORMAT_INVALID')]);
         }
       }
 
@@ -217,18 +241,16 @@ export function createApp(db: Db) {
         return sendError(res, 400, validation.errors);
       }
 
-      await db.db.run(`
-        UPDATE polls 
-        SET name = ?, details = ?, questions = ?, active = ?, updated_at = ?
-        WHERE admin_hash = ?
-      `, [
-        name?.trim() ?? poll.name,
-        details?.trim() ?? poll.details,
-        updatedQuestions,
-        active !== undefined ? (active ? 1 : 0) : poll.active,
-        now,
-        poll.admin_hash
-      ]);
+      await db.db
+        .update(pollsTable)
+        .set({
+          name: name?.trim() ?? poll.name,
+          details: details?.trim() ?? poll.details,
+          questions: updatedQuestions,
+          active: active !== undefined ? Boolean(active) : poll.active,
+          updatedAt: now
+        })
+        .where(eq(pollsTable.adminHash, poll.adminHash));
 
       res.json({ success: true });
     } catch (error) {
@@ -238,15 +260,17 @@ export function createApp(db: Db) {
   });
 
   // POST /api/polls/:pollId/answers/draft
-  app.post('/api/polls/:pollId/answers/draft', async (req: SessionRequest, res: Response) => {
+  app.post('/api/polls/:pollId/answers/draft', async (req: Request, res: Response) => {
     try {
-      const { pollId } = req.params;
+      const pollId = req.params.pollId as string;
       const { answers, time } = req.body;
 
       // Get poll
-      const poll = await db.db.get(`
-        SELECT questions FROM polls WHERE poll_id = ?
-      `, [pollId]);
+      const [poll] = await db.db
+        .select({ questions: pollsTable.questions })
+        .from(pollsTable)
+        .where(eq(pollsTable.pollId, pollId))
+        .limit(1);
 
       if (!poll) {
         return sendError(res, 404, [errorCodes.POLL_NOT_FOUND]);
@@ -268,26 +292,32 @@ export function createApp(db: Db) {
       const userInfo = `${req.ip ?? 'unknown'} ${req.get('user-agent') ?? ''}`.trim();
       const now = new Date().toISOString();
 
-      // Upsert draft answer
-      await db.db.run(`
-        INSERT INTO answers (id, user_id, poll_id, user_info, answers, time, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
-        ON CONFLICT(poll_id, user_id) DO UPDATE SET
-          answers = ?, time = ?, user_info = ?, status = 'draft', updated_at = ?
-      `, [
-        crypto.randomUUID(),
-        req.userId,
-        pollId,
-        userInfo,
-        JSON.stringify(answers || {}),
-        time || now,
-        now,
-        now,
-        JSON.stringify(answers || {}),
-        time || now,
-        userInfo,
-        now
-      ]);
+      const answerJson = JSON.stringify(answers || {});
+      const answerTime = time || now;
+
+      await db.db
+        .insert(answersTable)
+        .values({
+          id: crypto.randomUUID(),
+          userId: req.userId,
+          pollId,
+          userInfo,
+          answers: answerJson,
+          time: answerTime,
+          status: 'draft',
+          createdAt: now,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: [answersTable.pollId, answersTable.userId],
+          set: {
+            answers: answerJson,
+            time: answerTime,
+            userInfo,
+            status: 'draft',
+            updatedAt: now
+          }
+        });
 
       res.json({ success: true });
     } catch (error) {
@@ -297,15 +327,17 @@ export function createApp(db: Db) {
   });
 
   // POST /api/polls/:pollId/answers/submit
-  app.post('/api/polls/:pollId/answers/submit', async (req: SessionRequest, res: Response) => {
+  app.post('/api/polls/:pollId/answers/submit', async (req: Request, res: Response) => {
     try {
-      const { pollId } = req.params;
+      const pollId = req.params.pollId as string;
       const { answers, time } = req.body;
 
       // Get poll
-      const poll = await db.db.get(`
-        SELECT questions FROM polls WHERE poll_id = ?
-      `, [pollId]);
+      const [poll] = await db.db
+        .select({ questions: pollsTable.questions })
+        .from(pollsTable)
+        .where(eq(pollsTable.pollId, pollId))
+        .limit(1);
 
       if (!poll) {
         return sendError(res, 404, [errorCodes.POLL_NOT_FOUND]);
@@ -327,26 +359,32 @@ export function createApp(db: Db) {
       const userInfo = `${req.ip ?? 'unknown'} ${req.get('user-agent') ?? ''}`.trim();
       const now = new Date().toISOString();
 
-      // Upsert and mark as submitted
-      await db.db.run(`
-        INSERT INTO answers (id, user_id, poll_id, user_info, answers, time, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'submitted', ?, ?)
-        ON CONFLICT(poll_id, user_id) DO UPDATE SET
-          answers = ?, time = ?, user_info = ?, status = 'submitted', updated_at = ?
-      `, [
-        crypto.randomUUID(),
-        req.userId,
-        pollId,
-        userInfo,
-        JSON.stringify(answers || {}),
-        time || now,
-        now,
-        now,
-        JSON.stringify(answers || {}),
-        time || now,
-        userInfo,
-        now
-      ]);
+      const answerJson = JSON.stringify(answers || {});
+      const answerTime = time || now;
+
+      await db.db
+        .insert(answersTable)
+        .values({
+          id: crypto.randomUUID(),
+          userId: req.userId,
+          pollId,
+          userInfo,
+          answers: answerJson,
+          time: answerTime,
+          status: 'submitted',
+          createdAt: now,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: [answersTable.pollId, answersTable.userId],
+          set: {
+            answers: answerJson,
+            time: answerTime,
+            userInfo,
+            status: 'submitted',
+            updatedAt: now
+          }
+        });
 
       res.json({ success: true });
     } catch (error) {
@@ -361,14 +399,17 @@ export function createApp(db: Db) {
       const poll = await requireAdminPoll(req, res);
       if (!poll) return;
 
-      const answers = await db.db.all(`
-        SELECT time, user_info, answers
-        FROM answers 
-        WHERE poll_id = ? AND status = 'submitted'
-        ORDER BY created_at
-      `, [poll.poll_id]);
+      const submittedAnswers = await db.db
+        .select({
+          time: answersTable.time,
+          userInfo: answersTable.userInfo,
+          answers: answersTable.answers
+        })
+        .from(answersTable)
+        .where(and(eq(answersTable.pollId, poll.pollId), eq(answersTable.status, 'submitted')))
+        .orderBy(answersTable.createdAt);
 
-      const results = answers.map((row: any) => {
+      const results = submittedAnswers.map((row: any) => {
         const answers = JSON.parse(row.answers);
         const answeredCount = Object.values(answers).filter((a: any) => 
           (a.selectedOptions && a.selectedOptions.length > 0) || (a.text && a.text.trim())
@@ -376,7 +417,7 @@ export function createApp(db: Db) {
 
         return {
           time: row.time,
-          user_info: row.user_info,
+          user_info: row.userInfo,
           answered_questions: answeredCount,
           answers: JSON.stringify(answers)
         };
@@ -385,7 +426,7 @@ export function createApp(db: Db) {
       const csv = toCsv(results);
       
       res.header('Content-Type', 'text/csv');
-      res.header('Content-Disposition', `attachment; filename="poll-results-${poll.poll_id}.csv"`);
+      res.header('Content-Disposition', `attachment; filename="poll-results-${poll.pollId}.csv"`);
       res.send(csv);
     } catch (error) {
       console.error('Error exporting CSV:', error);
