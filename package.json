@@ -1,0 +1,43 @@
+{
+  "name": "poll-maker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:api & npm run dev:web",
+    "dev:api": "tsx watch src/server/index.ts",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "start": "node dist/server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:migrate": "tsx src/server/db/migrate.ts"
+  },
+  "dependencies": {
+    "@preact/preset-vite": "^2.10.5",
+    "cookie": "^1.0.2",
+    "drizzle-orm": "^0.38.4",
+    "express": "^4.21.2",
+    "micro-md-editor": "^1.0.0",
+    "nanoid": "^5.0.9",
+    "preact": "^10.26.4",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@testing-library/preact": "^3.2.4",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.6",
+    "@types/sqlite3": "^3.1.11",
+    "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.10",
+    "jsdom": "^26.0.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.14",
+    "vitest": "^2.1.8"
+  }
+}
