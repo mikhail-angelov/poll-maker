@@ -15,5 +15,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true
+  },
+  resolve: {
+    alias: {
+      'react': 'preact/compat',
+      'react-dom': 'preact/compat',
+      'react/jsx-runtime': 'preact/jsx-runtime'
+    }
   }
 });

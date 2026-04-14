@@ -154,10 +154,11 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
             {t('create.details')}
           </label>
           <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
-            <MicroMDEditor
-              initialMarkdown={'details'}
-              onChange={setDetails}
-              className="min-h-[200px]"
+            <textarea
+              value={details}
+              onChange={(e:any) => setDetails(e.target.value)}
+              rows={3}
+              className="w-full"
             />
           </div>
         </div>
@@ -169,7 +170,7 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
           </label>
           <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
             <MicroMDEditor
-              initialMarkdown={`Enter ${t('create.questions').toLowerCase()}...`}
+              initialMarkdown={questionText}
               onChange={setQuestionText}
               className="min-h-[300px]"
             />
