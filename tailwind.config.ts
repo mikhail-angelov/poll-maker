@@ -5,15 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#18201b',
-        paper: '#f7f0df',
-        moss: '#526b4f',
-        clay: '#b75f35'
+        ink: '#1A1033',
+        paper: '#EDE6FF',
+        moss: '#5B3DF5',
+        clay: '#FF7AB6',
+        muted: '#4E4669',
+        lime: '#C6F24B',
+        peach: '#FFB78A',
       },
       fontFamily: {
-        display: ['Georgia', 'serif'],
-        body: ['ui-serif', 'Georgia', 'serif']
-      }
+        display: ["'Fraunces'", 'Georgia', 'serif'],
+        body: ["'Manrope'", 'system-ui', 'sans-serif'],
+        mono: ["'JetBrains Mono'", 'monospace'],
+      },
     }
   },
   plugins: []

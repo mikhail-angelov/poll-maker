@@ -3,7 +3,10 @@ import { useI18n } from '../i18n';
 import { createPoll, getAdminPoll, updateAdminPoll } from '../api';
 import { parseQuestionFormat, serializeQuestionFormat } from '../../shared/questionFormat';
 import { validatePollInput } from '../../shared/validation';
-import {  MicroMDEditor } from 'micro-md-editor/preact';
+import { MicroMDEditor } from 'micro-md-editor/preact';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { ErrorList } from '../components/ErrorList';
+import { CARD_SHADOW } from '../styles';
 
 const DEFAULT_QUESTION_TEXT = `# Id
 ## Type your email
@@ -30,11 +33,8 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load poll data if in edit mode
   useEffect(() => {
-    if (editPollHash) {
-      loadPollForEdit();
-    }
+    if (editPollHash) loadPollForEdit();
   }, [editPollHash]);
 
   const loadPollForEdit = async () => {
@@ -43,10 +43,7 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
       const result = await getAdminPoll(editPollHash!);
       setName(result.poll.name);
       setDetails(result.poll.details);
-      
-      // Parse questions from poll data
-      const questionsText = serializeQuestionFormat(result.poll.questions);
-      setQuestionText(questionsText);
+      setQuestionText(serializeQuestionFormat(result.poll.questions));
     } catch (err) {
       console.error('Error loading poll for edit:', err);
       setErrors(['Failed to load poll data']);
@@ -58,34 +55,19 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setErrors([]);
-
     try {
       const questions = parseQuestionFormat(questionText);
       const validation = validatePollInput({ name, details, questions });
-      
       if (!validation.ok) {
         setErrors(validation.errors);
         return;
       }
-
       setIsSubmitting(true);
-      
       if (editPollHash) {
-        // Update existing poll
-        await updateAdminPoll(editPollHash, { 
-          name, 
-          details, 
-          questions: questionText,
-          active: true // Keep poll active when updating
-        });
-        
-        // Navigate back to admin page after update
+        await updateAdminPoll(editPollHash, { name, details, questions: questionText, active: true });
         window.location.href = `/admin/${editPollHash}`;
       } else {
-        // Create new poll
         const result = await createPoll({ name, details, questions: questionText });
-        
-        // Navigate to admin page
         window.location.href = result.adminUrl;
       }
     } catch (error: any) {
@@ -108,139 +90,104 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
     setErrors([]);
   };
 
-  const parsedQuestions = (() => {
-    try {
-      return parseQuestionFormat(questionText);
-    } catch {
-      return [];
-    }
-  })();
-
   if (isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-moss mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading poll data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner label="Loading poll data…" />;
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-ink">
-        {editPollHash ? t('create.editTitle') : t('create.title')}
-      </h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Poll Name */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-ink">
+    <form onSubmit={handleSubmit} className="h-full flex gap-5 py-5">
+      {/* Left column: meta + actions */}
+      <div className="w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider self-start"
+             style={{ background: '#C6F24B', color: '#1A1033' }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#1A1033' }} />
+          {editPollHash ? t('create.editTitle') : t('create.title')}
+        </div>
+
+        {/* Poll name */}
+        <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
             {t('create.name')}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName((e.target as HTMLInputElement).value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moss focus:border-transparent"
-            placeholder={t('create.name')}
+            className="w-full bg-transparent border-0 border-b-2 outline-none py-1.5 text-xl font-bold transition"
+            style={{ borderColor: '#C6B8F5', color: '#1A1033' }}
+            placeholder="My awesome poll"
+            onFocus={e => (e.target as HTMLElement).style.borderColor = '#5B3DF5'}
+            onBlur={e => (e.target as HTMLElement).style.borderColor = '#C6B8F5'}
           />
         </div>
 
-        {/* Poll Details */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-ink">
+        {/* Poll details */}
+        <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
             {t('create.details')}
           </label>
-          <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
-            <textarea
-              value={details}
-              onChange={(e:any) => setDetails(e.target.value)}
-              rows={3}
-              className="w-full"
-            />
-          </div>
+          <textarea
+            value={details}
+            onChange={(e: any) => setDetails(e.target.value)}
+            rows={4}
+            className="w-full rounded-xl p-3 outline-none text-sm resize-none transition"
+            style={{ background: '#EDE6FF', border: 'none', color: '#1A1033' }}
+            placeholder="A short description of this poll…"
+          />
         </div>
 
-        {/* Questions Editor */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-ink">
-            {t('create.questions')}
-          </label>
-          <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-moss focus-within:border-transparent">
-            <MicroMDEditor
-              initialMarkdown={questionText}
-              onChange={setQuestionText}
-              className="min-h-[300px]"
-            />
-          </div>
-          <div className="mt-2 text-sm text-gray-600">
-            Format: # Question Name ## Question Text [] optional [x] multiselect - Option 1 - Option 2
-          </div>
-        </div>
+        <ErrorList errors={errors} />
 
-        {/* Parsed Preview */}
-        {parsedQuestions.length > 0 && (
-          <div className="bg-white/50 p-4 rounded-lg border">
-            <h3 className="font-medium mb-2">Preview ({parsedQuestions.length} questions)</h3>
-            <div className="space-y-3">
-              {parsedQuestions.map((question, index) => (
-                <div key={index} className="p-3 bg-white rounded border">
-                  <div className="font-medium">{question.name}</div>
-                  <div className="text-sm text-gray-600">{question.question}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {question.optional && 'Optional • '}
-                    {question.multiselect ? 'Multi-select' : 'Single-select'} • 
-                    {question.options.length} options
-                    {question.options.includes('text') || question.options.includes('текст') ? ' • Free text allowed' : ''}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Error Messages */}
-        {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            <ul className="list-disc list-inside space-y-1">
-              {errors.map((error, index) => (
-                <li key={index}>{t(`error.${error}` as any) || error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-4">
+        {/* Actions */}
+        <div className="flex flex-col gap-2">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-3 bg-moss text-white rounded-lg font-medium hover:bg-moss/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-3.5 rounded-full text-white text-sm font-bold transition hover:brightness-110 disabled:opacity-50"
+            style={{ background: '#5B3DF5' }}
           >
-            {isSubmitting 
-              ? (editPollHash ? 'Updating...' : 'Creating...') 
-              : (editPollHash ? t('create.update') : t('create.submit'))}
+            {isSubmitting
+              ? (editPollHash ? 'Updating…' : 'Creating…')
+              : (editPollHash ? t('create.update') : t('create.submit'))} →
           </button>
           <button
             type="button"
             onClick={handleClear}
-            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
+            className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
+            style={{ background: '#EDE6FF', color: '#1A1033' }}
           >
             {t('create.clear')}
           </button>
           {editPollHash && (
             <button
               type="button"
-              onClick={() => window.location.href = `/admin/${editPollHash}`}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
+              onClick={() => (window.location.href = `/admin/${editPollHash}`)}
+              className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
+              style={{ background: '#EDE6FF', color: '#1A1033' }}
             >
               {t('create.cancel')}
             </button>
           )}
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* Right column: questions editor */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="bg-white rounded-[28px] flex flex-col flex-1 min-h-0 p-6" style={{ boxShadow: CARD_SHADOW }}>
+          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2 shrink-0" style={{ color: '#5B3DF5' }}>
+            {t('create.questions')}
+          </label>
+          <div className="editor-fullheight flex-1 min-h-0 rounded-xl border-2" style={{ borderColor: '#EDE6FF' }}>
+            <MicroMDEditor
+              initialMarkdown={questionText}
+              onChange={setQuestionText}
+            />
+          </div>
+          <p className="mt-3 text-xs leading-relaxed shrink-0" style={{ color: '#4E4669', fontFamily: "'JetBrains Mono', monospace" }}>
+            Format: # Name → ## Question → [] optional / [x] multiselect → - Option 1 - Option 2
+          </p>
+        </div>
+      </div>
+    </form>
   );
 }

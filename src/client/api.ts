@@ -56,6 +56,18 @@ export interface ErrorResponse {
   errors: string[];
 }
 
+export interface UserPollItem {
+  adminHash: string;
+  pollId: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface UserPollsResponse {
+  polls: UserPollItem[];
+}
+
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${endpoint}`, {
     headers: {
@@ -85,6 +97,10 @@ async function adminApiRequest<T>(endpoint: string, adminHash: string, options: 
 
 export async function getSession(): Promise<SessionResponse> {
   return apiRequest<SessionResponse>('/session');
+}
+
+export async function getUserPolls(): Promise<UserPollsResponse> {
+  return apiRequest<UserPollsResponse>('/user/polls');
 }
 
 export async function createPoll(data: CreatePollRequest): Promise<CreatePollResponse> {
@@ -124,5 +140,5 @@ export async function submitAnswer(pollId: string, data: AnswerRequest): Promise
 }
 
 export function csvUrl(adminHash: string): string {
-  return `/api/admin/poll/results.csv`;
+  return `/api/admin/poll/results.csv?adminHash=${encodeURIComponent(adminHash)}`;
 }

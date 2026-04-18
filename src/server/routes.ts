@@ -53,6 +53,28 @@ export function createApp(db: Db) {
     res.json({ userId: req.userId });
   });
 
+  // GET /api/user/polls
+  app.get('/api/user/polls', async (req: Request, res: Response) => {
+    try {
+      const userPolls = await db.db
+        .select({
+          adminHash: pollsTable.adminHash,
+          pollId: pollsTable.pollId,
+          name: pollsTable.name,
+          active: pollsTable.active,
+          createdAt: pollsTable.createdAt,
+        })
+        .from(pollsTable)
+        .where(eq(pollsTable.userId, req.userId))
+        .orderBy(desc(pollsTable.createdAt));
+
+      res.json({ polls: userPolls });
+    } catch (error) {
+      console.error('Error fetching user polls:', error);
+      sendError(res, 500, ['INTERNAL_SERVER_ERROR']);
+    }
+  });
+
   // POST /api/polls
   app.post('/api/polls', async (req: Request, res: Response) => {
     try {
@@ -395,9 +417,15 @@ export function createApp(db: Db) {
 
   // GET /api/admin/poll/results.csv
   app.get('/api/admin/poll/results.csv', async (req: Request, res: Response) => {
+    // Accept adminHash from query param (browser download link can't send headers)
+    if (req.query.adminHash && !req.headers['x-poll-admin-hash']) {
+      req.headers['x-poll-admin-hash'] = req.query.adminHash as string;
+    }
     try {
       const poll = await requireAdminPoll(req, res);
       if (!poll) return;
+
+      const questions: PollQuestion[] = JSON.parse(poll.questions);
 
       const submittedAnswers = await db.db
         .select({
@@ -409,21 +437,24 @@ export function createApp(db: Db) {
         .where(and(eq(answersTable.pollId, poll.pollId), eq(answersTable.status, 'submitted')))
         .orderBy(answersTable.createdAt);
 
-      const results = submittedAnswers.map((row: any) => {
-        const answers = JSON.parse(row.answers);
-        const answeredCount = Object.values(answers).filter((a: any) => 
-          (a.selectedOptions && a.selectedOptions.length > 0) || (a.text && a.text.trim())
-        ).length;
+      const headers = ['time', 'user_info', ...questions.map(q => q.name)];
 
-        return {
-          time: row.time,
-          user_info: row.userInfo,
-          answered_questions: answeredCount,
-          answers: JSON.stringify(answers)
-        };
+      const results = submittedAnswers.map((row: any) => {
+        const answerMap: Record<string, { selectedOptions?: string[]; text?: string }> = JSON.parse(row.answers);
+        const ip = row.userInfo.split(' ')[0];
+        const record: Record<string, string> = { time: row.time, user_info: ip };
+        questions.forEach((q, i) => {
+          const answer = answerMap[String(i)] || {};
+          const selected = answer.selectedOptions || [];
+          const parts = selected.map(opt =>
+            (opt === 'text' || opt === 'текст') ? (answer.text || '') : opt
+          ).filter(Boolean);
+          record[q.name] = parts.length > 0 ? parts.join(';') : (answer.text || '');
+        });
+        return record;
       });
 
-      const csv = toCsv(results);
+      const csv = toCsv(headers, results);
       
       res.header('Content-Type', 'text/csv');
       res.header('Content-Disposition', `attachment; filename="poll-results-${poll.pollId}.csv"`);

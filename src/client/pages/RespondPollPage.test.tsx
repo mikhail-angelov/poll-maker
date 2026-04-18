@@ -68,9 +68,12 @@ describe('RespondPollPage free-text options', () => {
 
     renderPage();
 
+    await screen.findByText('Begin');
+    fireEvent.click(screen.getByText('Begin'));
+
     await screen.findByText('What should we know?');
 
-    expect(screen.getByPlaceholderText('Enter your answer...')).not.toBeNull();
+    expect(screen.getByPlaceholderText('Type your answer…')).not.toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
@@ -95,15 +98,19 @@ describe('RespondPollPage free-text options', () => {
 
     renderPage();
 
+    await screen.findByText('Begin');
+    fireEvent.click(screen.getByText('Begin'));
+
     await screen.findByText('Pick one');
 
-    const textRadio = screen.getAllByRole('radio')[1] as HTMLInputElement;
-    expect(textRadio.checked).toBe(false);
+    // "Other" option is a button; click it to reveal the free-text input
+    const otherButton = screen.getByText('Other');
+    expect(screen.queryByPlaceholderText('Type your answer…')).toBeNull();
 
-    fireEvent.input(screen.getByPlaceholderText('Enter your answer...'), {
-      target: { value: 'Custom answer' }
-    });
+    fireEvent.click(otherButton);
+    const textInput = await screen.findByPlaceholderText('Type your answer…');
 
-    await waitFor(() => expect(textRadio.checked).toBe(true));
+    fireEvent.input(textInput, { target: { value: 'Custom answer' } });
+    await waitFor(() => expect((textInput as HTMLInputElement).value).toBe('Custom answer'));
   });
 });

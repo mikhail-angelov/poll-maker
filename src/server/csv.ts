@@ -4,11 +4,10 @@ export function escapeCsv(value: unknown): string {
   return `"${raw.replaceAll('"', '""')}"`;
 }
 
-export function toCsv(rows: Array<Record<string, unknown>>): string {
-  const headers = ['time', 'user_info', 'answered_questions', 'answers'];
-  const lines = [headers.join(',')];
+export function toCsv(headers: string[], rows: Array<Record<string, unknown>>): string {
+  const lines = [headers.map(escapeCsv).join(',')];
   for (const row of rows) {
-    lines.push(headers.map((header) => escapeCsv(row[header])).join(','));
+    lines.push(headers.map((h) => escapeCsv(row[h])).join(','));
   }
   return `${lines.join('\n')}\n`;
 }

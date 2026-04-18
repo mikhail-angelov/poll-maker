@@ -2,6 +2,10 @@ import { useState, useEffect } from 'preact/hooks';
 import { useI18n } from '../i18n';
 import { getAdminPoll, csvUrl } from '../api';
 import type { AdminPollResponse } from '../api';
+import { CopyRow } from '../components/CopyRow';
+import { QRCodeCanvas } from '../components/QRCodeCanvas';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { CARD_SHADOW } from '../styles';
 
 interface AdminPollPageProps {
   pollHash: string;
@@ -13,9 +17,7 @@ export function AdminPollPage({ pollHash }: AdminPollPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPoll();
-  }, [pollHash]);
+  useEffect(() => { loadPoll(); }, [pollHash]);
 
   const loadPoll = async () => {
     try {
@@ -31,36 +33,21 @@ export function AdminPollPage({ pollHash }: AdminPollPageProps) {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const handleEditPoll = () => {
-    // Navigate to edit page with poll data
-    window.location.href = `/?edit=${pollHash}`;
-  };
+  const handleEditPoll = () => { window.location.href = `/edit/${pollHash}`; };
 
   if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-moss mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading poll data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner label="Loading poll data…" className="max-w-5xl mx-auto pt-12 text-center" />;
   }
 
   if (error || !data) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-8 rounded-lg text-center">
-          <h2 className="text-xl font-bold mb-2">Error</h2>
-          <p>{error || 'Poll not found or access denied'}</p>
-          <button
-            onClick={loadPoll}
-            className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-          >
+      <div className="max-w-5xl mx-auto pt-8">
+        <div className="p-8 rounded-[28px] bg-white text-center" style={{ boxShadow: CARD_SHADOW }}>
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#1A1033' }}>Error</h2>
+          <p style={{ color: '#4E4669' }}>{error || 'Poll not found or access denied'}</p>
+          <button onClick={loadPoll}
+                  className="mt-4 px-5 py-2.5 rounded-full text-white text-sm font-bold transition hover:brightness-110"
+                  style={{ background: '#5B3DF5' }}>
             Retry
           </button>
         </div>
@@ -74,132 +61,120 @@ export function AdminPollPage({ pollHash }: AdminPollPageProps) {
   const adminUrl = `${baseUrl}/admin/${pollHash}`;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-ink mb-2">{poll.name}</h1>
-        <p className="text-gray-600 whitespace-pre-wrap">{poll.details}</p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <div className="text-2xl font-bold text-moss">{summary.questionCount}</div>
-          <div className="text-gray-600">{t('admin.questions')}</div>
+    <div className="max-w-5xl mx-auto">
+      {/* Title row */}
+      <div className="pt-6 pb-5 flex items-start justify-between gap-6 flex-wrap">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider mb-2"
+               style={{ background: '#C6F24B', color: '#1A1033' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#1A1033' }} />
+            LIVE
+          </div>
+          <h1 className="m-0 text-[40px] leading-none font-normal tracking-tight"
+              style={{ fontFamily: "'Fraunces', Georgia, serif", color: '#1A1033' }}>
+            {poll.name}<span style={{ color: '#5B3DF5' }}>.</span>
+          </h1>
+          <p className="mt-2" style={{ color: '#4E4669' }}>{poll.details}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <div className="text-2xl font-bold text-moss">{summary.submittedCount}</div>
-          <div className="text-gray-600">{t('admin.submitted')}</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <a
-            href={csvUrl(pollHash)}
-            download
-            className="block text-center px-4 py-3 bg-moss text-white rounded-lg font-medium hover:bg-moss/90"
-          >
-            {t('admin.downloadCsv')}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={handleEditPoll}
+                  className="h-11 px-4 rounded-full bg-white text-sm font-semibold hover:bg-slate-50 transition"
+                  style={{ boxShadow: CARD_SHADOW, color: '#1A1033' }}>
+            ✎ {t('admin.editPoll')}
+          </button>
+          <a href={csvUrl(pollHash)} download
+             className="h-11 px-4 rounded-full text-white text-sm font-bold flex items-center transition hover:brightness-110 no-underline"
+             style={{ background: '#1A1033' }}>
+            ⇩ {t('admin.downloadCsv')}
           </a>
         </div>
       </div>
 
-      {/* URLs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-medium mb-2">{t('admin.publishUrl')}</h3>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={publicUrl}
-              readOnly
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-            />
-            <button
-              onClick={() => copyToClipboard(publicUrl)}
-              className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
-            >
-              Copy
-            </button>
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: t('admin.questions'), value: summary.questionCount, bg: '#5B3DF5', color: '#fff' },
+          { label: t('admin.submitted'), value: summary.submittedCount, bg: '#fff', color: '#1A1033' },
+        ].map((m, i) => (
+          <div key={i} className="p-5 rounded-3xl" style={{ background: m.bg, color: m.color, boxShadow: CARD_SHADOW }}>
+            <div className="text-[11px] font-bold uppercase tracking-wider opacity-70"
+                 style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.label}</div>
+            <div className="mt-1 text-4xl font-normal tracking-tight"
+                 style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{m.value}</div>
           </div>
+        ))}
+      </div>
+
+      {/* Share links */}
+      <div className="bg-white rounded-3xl p-5 mb-6" style={{ boxShadow: CARD_SHADOW }}>
+        <div className="text-[11px] font-bold uppercase tracking-wider mb-3"
+             style={{ color: '#5B3DF5', fontFamily: "'JetBrains Mono', monospace" }}>
+          {t('admin.publishUrl')} / {t('admin.adminUrl')}
         </div>
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-medium mb-2">{t('admin.adminUrl')}</h3>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={adminUrl}
-              readOnly
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-            />
-            <button
-              onClick={() => copyToClipboard(adminUrl)}
-              className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
-            >
-              Copy
-            </button>
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 min-w-0">
+            <CopyRow label="Public" url={publicUrl} accent="#5B3DF5" />
+            <CopyRow label="Admin" url={adminUrl} accent="#FF7AB6" />
+          </div>
+          <div className="shrink-0">
+            <QRCodeCanvas url={publicUrl} />
           </div>
         </div>
       </div>
 
-      {/* Edit Poll Button */}
-      <div className="mb-8">
-        <button
-          onClick={handleEditPoll}
-          className="px-6 py-3 bg-clay text-white rounded-lg font-medium hover:bg-clay/90"
-        >
-          {t('admin.editPoll')}
-        </button>
-      </div>
-
-      {/* Results Table */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-bold text-ink">{t('admin.results')}</h2>
+      {/* Results table */}
+      <div className="bg-white rounded-3xl overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100">
+          <div className="text-sm font-bold" style={{ color: '#1A1033' }}>{t('admin.results')}</div>
         </div>
-        
+
         {results.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500">
+          <div className="px-6 py-12 text-center" style={{ color: '#4E4669' }}>
             No submissions yet
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('admin.time')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('admin.user')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('admin.answered')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('admin.answers')}
-                  </th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ textAlign: 'left' }}>
+                  {[t('admin.time'), t('admin.user'), t('admin.answered'), t('admin.answers')].map(h => (
+                    <th key={h} className="px-5 py-3 font-bold text-[10px] uppercase tracking-widest"
+                        style={{ color: '#4E4669', fontFamily: "'JetBrains Mono', monospace" }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {results.map((row, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(row.time).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs truncate" title={row.user_info}>
-                        {row.user_info}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {row.answered_questions} / {summary.questionCount}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs truncate" title={row.answers}>
-                        {row.answers}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {results.map((row, index) => {
+                  const answered = row.answered_questions;
+                  const total = summary.questionCount;
+                  const pct = answered / total;
+                  return (
+                    <tr key={index} className="border-t border-slate-100 hover:bg-indigo-50/30">
+                      <td className="px-5 py-3 font-mono text-xs" style={{ color: '#1A1033' }}>
+                        {new Date(row.time).toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3" style={{ color: '#1A1033' }}>
+                        <div className="max-w-xs truncate" title={row.user_info}>{row.user_info}</div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(91,61,245,0.12)' }}>
+                            <div className="h-full rounded-full"
+                                 style={{ width: `${pct * 100}%`, background: pct === 1 ? '#5B3DF5' : '#FFB78A' }} />
+                          </div>
+                          <span className="text-xs font-mono font-semibold tabular-nums" style={{ color: '#1A1033' }}>
+                            {answered} / {total}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="max-w-xs truncate text-xs" style={{ color: '#4E4669' }} title={row.answers}>
+                          {row.answers}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

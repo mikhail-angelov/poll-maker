@@ -4,9 +4,55 @@
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(183, 95, 53, 0.16), transparent 28rem),
-    linear-gradient(135deg, #f7f0df 0%, #eef2df 100%);
-  color: #18201b;
-  font-family: Georgia, serif;
+  background: #F3EEFF;
+  color: #1A1033;
+  font-family: 'Manrope', system-ui, sans-serif;
 }
+
+/* Decorative gradient blobs */
+.neon-blob-tr {
+  position: absolute;
+  top: -5rem;
+  right: -5rem;
+  width: 340px;
+  height: 340px;
+  border-radius: 9999px;
+  opacity: 0.6;
+  filter: blur(48px);
+  background: radial-gradient(circle, #FFB78A 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Stretch MicroMDEditor to fill its container */
+.editor-fullheight {
+  display: flex;
+  flex-direction: column;
+}
+.editor-fullheight > div {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.editor-fullheight [data-mmd-editor-root] {
+  flex: 1;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.neon-blob-bl {
+  position: absolute;
+  bottom: -6rem;
+  left: -7rem;
+  width: 360px;
+  height: 360px;
+  border-radius: 9999px;
+  opacity: 0.3;
+  filter: blur(64px);
+  background: radial-gradient(circle, #C6F24B 0%, transparent 60%);
+  pointer-events: none;
+}
+
+@keyframes neonSpin { to { transform: rotate(360deg); } }
+@keyframes neonIn { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes neonPop { 50% { transform: scale(1.08); } }
