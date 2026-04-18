@@ -29,6 +29,7 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
   res.cookie(cookieName, userId, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: maxAgeMs,
     path: '/'
   });

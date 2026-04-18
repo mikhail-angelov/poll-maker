@@ -12,7 +12,9 @@ import { toCsv } from './csv';
 
 export function createApp(db: Db) {
   const app = express();
-  
+
+  app.set('trust proxy', 1);
+
   // Middleware
   app.use(express.json());
   app.use(sessionMiddleware);
