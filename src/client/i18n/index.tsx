@@ -4,7 +4,7 @@ import { en } from './en';
 import { ru } from './ru';
 
 export type Language = 'en' | 'ru';
-export type Dictionary = typeof en;
+export type Dictionary = { readonly [K in keyof typeof en]: string };
 
 const dictionaries: Record<Language, Dictionary> = { en, ru };
 
