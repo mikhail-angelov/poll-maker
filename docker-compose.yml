@@ -7,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:3014:3001"
     volumes:
-      - ./poll-maker.sqlite:/app/data/poll-maker.sqlite
+      - ./poll-maker.sqlite:/app/poll-maker.sqlite
     env_file:
       - ./.env
     restart: unless-stopped
