@@ -90,6 +90,7 @@ async function adminApiRequest<T>(endpoint: string, adminHash: string, options: 
     ...options,
     headers: {
       'X-Poll-Admin-Hash': adminHash,
+      'Content-Type': 'application/json',
       ...options.headers,
     },
   });

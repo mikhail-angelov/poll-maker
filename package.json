@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "npm run dev:api & npm run dev:web",
-    "dev:api": "tsx watch src/server/index.ts",
+    "dev:api": "tsx watch --inspect src/server/index.ts",
     "dev:web": "vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.node.json && vite build",
     "start": "node dist/server/index.js",
