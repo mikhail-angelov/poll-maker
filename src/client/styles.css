@@ -40,6 +40,42 @@ body {
   box-sizing: border-box;
 }
 
+/* Mobile-specific improvements */
+@media (max-width: 1023px) {
+  .editor-fullheight [data-mmd-editor-root] {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  /* Improve touch targets */
+  button, input, textarea {
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on focus for inputs */
+  input, textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
+
+/* Touch-friendly button styles */
+button:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Improve mobile scrolling */
+@media (max-width: 1023px) {
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Safe area insets for modern mobile browsers */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .neon-blob-bl {
   position: absolute;
   bottom: -6rem;
