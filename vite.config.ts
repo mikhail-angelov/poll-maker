@@ -2,7 +2,12 @@ import preact from '@preact/preset-vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact({
+    // Enable babel to avoid the transform-hook-names plugin issue with zimmerframe
+    babel: {
+      // Empty config to enable babel mode
+    }
+  })],
   build: {
     outDir: 'dist/client',
     emptyOutDir: false
