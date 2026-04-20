@@ -95,17 +95,113 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex gap-5 py-5">
-      {/* Left column: meta + actions */}
-      <div className="w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col lg:flex-row gap-5 py-5">
+      {/* Main content area - stacks vertically on mobile, side-by-side on desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
+        {/* Left column: meta + actions - hidden on mobile, shown on desktop */}
+        <div className="hidden lg:flex w-[320px] flex-shrink-0 flex-col gap-4 overflow-y-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider self-start"
+               style={{ background: '#C6F24B', color: '#1A1033' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#1A1033' }} />
+            {editPollHash ? t('create.editTitle') : t('create.title')}
+          </div>
+
+          {/* Poll name */}
+          <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
+              {t('create.name')}
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName((e.target as HTMLInputElement).value)}
+              className="w-full bg-transparent border-0 border-b-2 outline-none py-1.5 text-xl font-bold transition"
+              style={{ borderColor: '#C6B8F5', color: '#1A1033' }}
+              placeholder="My awesome poll"
+              onFocus={e => (e.target as HTMLElement).style.borderColor = '#5B3DF5'}
+              onBlur={e => (e.target as HTMLElement).style.borderColor = '#C6B8F5'}
+            />
+          </div>
+
+          {/* Poll details */}
+          <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
+              {t('create.details')}
+            </label>
+            <textarea
+              value={details}
+              onChange={(e: any) => setDetails(e.target.value)}
+              rows={4}
+              className="w-full rounded-xl p-3 outline-none text-sm resize-none transition"
+              style={{ background: '#EDE6FF', border: 'none', color: '#1A1033' }}
+              placeholder="A short description of this poll…"
+            />
+          </div>
+
+          <ErrorList errors={errors} />
+
+          {/* Desktop actions - hidden on mobile */}
+          <div className="flex flex-col gap-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full px-6 py-3.5 rounded-full text-white text-sm font-bold transition hover:brightness-110 disabled:opacity-50"
+              style={{ background: '#5B3DF5' }}
+            >
+              {isSubmitting
+                ? (editPollHash ? 'Updating…' : 'Creating…')
+                : (editPollHash ? t('create.update') : t('create.submit'))} →
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
+              style={{ background: '#EDE6FF', color: '#1A1033' }}
+            >
+              {t('create.clear')}
+            </button>
+            {editPollHash && (
+              <button
+                type="button"
+                onClick={() => (window.location.href = `/admin/${editPollHash}`)}
+                className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
+                style={{ background: '#EDE6FF', color: '#1A1033' }}
+              >
+                {t('create.cancel')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right column: questions editor - full width on mobile, flex-1 on desktop */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="bg-white rounded-[28px] flex flex-col flex-1 min-h-0 p-4 lg:p-6" style={{ boxShadow: CARD_SHADOW }}>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2 shrink-0" style={{ color: '#5B3DF5' }}>
+              {t('create.questions')}
+            </label>
+            <div className="editor-fullheight flex-1 min-h-0 rounded-xl border-2" style={{ borderColor: '#EDE6FF' }}>
+              <MicroMDEditor
+                initialMarkdown={questionText}
+                onChange={setQuestionText}
+              />
+            </div>
+            <p className="mt-3 text-xs leading-relaxed shrink-0" style={{ color: '#4E4669', fontFamily: "'JetBrains Mono', monospace" }}>
+              Format: # Name → ## Question → [] optional / [x] multiselect → - Option 1 - Option 2
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile form fields and actions - shown only on mobile */}
+      <div className="lg:hidden flex flex-col gap-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider self-start"
              style={{ background: '#C6F24B', color: '#1A1033' }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#1A1033' }} />
           {editPollHash ? t('create.editTitle') : t('create.title')}
         </div>
 
-        {/* Poll name */}
-        <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+        {/* Poll name - mobile */}
+        <div className="p-4 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
             {t('create.name')}
           </label>
@@ -113,7 +209,7 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
             type="text"
             value={name}
             onChange={(e) => setName((e.target as HTMLInputElement).value)}
-            className="w-full bg-transparent border-0 border-b-2 outline-none py-1.5 text-xl font-bold transition"
+            className="w-full bg-transparent border-0 border-b-2 outline-none py-1.5 text-lg font-bold transition"
             style={{ borderColor: '#C6B8F5', color: '#1A1033' }}
             placeholder="My awesome poll"
             onFocus={e => (e.target as HTMLElement).style.borderColor = '#5B3DF5'}
@@ -121,15 +217,15 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
           />
         </div>
 
-        {/* Poll details */}
-        <div className="p-6 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
+        {/* Poll details - mobile */}
+        <div className="p-4 bg-white rounded-[28px]" style={{ boxShadow: CARD_SHADOW }}>
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#5B3DF5' }}>
             {t('create.details')}
           </label>
           <textarea
             value={details}
             onChange={(e: any) => setDetails(e.target.value)}
-            rows={4}
+            rows={3}
             className="w-full rounded-xl p-3 outline-none text-sm resize-none transition"
             style={{ background: '#EDE6FF', border: 'none', color: '#1A1033' }}
             placeholder="A short description of this poll…"
@@ -138,54 +234,38 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
 
         <ErrorList errors={errors} />
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full px-6 py-3.5 rounded-full text-white text-sm font-bold transition hover:brightness-110 disabled:opacity-50"
-            style={{ background: '#5B3DF5' }}
-          >
-            {isSubmitting
-              ? (editPollHash ? 'Updating…' : 'Creating…')
-              : (editPollHash ? t('create.update') : t('create.submit'))} →
-          </button>
-          <button
-            type="button"
-            onClick={handleClear}
-            className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
-            style={{ background: '#EDE6FF', color: '#1A1033' }}
-          >
-            {t('create.clear')}
-          </button>
-          {editPollHash && (
+        {/* Mobile actions - fixed at bottom */}
+        <div className="sticky bottom-0 bg-white pt-4 pb-6 border-t border-gray-100">
+          <div className="flex flex-col gap-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full px-6 py-3.5 rounded-full text-white text-sm font-bold transition hover:brightness-110 disabled:opacity-50"
+              style={{ background: '#5B3DF5' }}
+            >
+              {isSubmitting
+                ? (editPollHash ? 'Updating…' : 'Creating…')
+                : (editPollHash ? t('create.update') : t('create.submit'))} →
+            </button>
             <button
               type="button"
-              onClick={() => (window.location.href = `/admin/${editPollHash}`)}
+              onClick={handleClear}
               className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
               style={{ background: '#EDE6FF', color: '#1A1033' }}
             >
-              {t('create.cancel')}
+              {t('create.clear')}
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* Right column: questions editor */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="bg-white rounded-[28px] flex flex-col flex-1 min-h-0 p-6" style={{ boxShadow: CARD_SHADOW }}>
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2 shrink-0" style={{ color: '#5B3DF5' }}>
-            {t('create.questions')}
-          </label>
-          <div className="editor-fullheight flex-1 min-h-0 rounded-xl border-2" style={{ borderColor: '#EDE6FF' }}>
-            <MicroMDEditor
-              initialMarkdown={questionText}
-              onChange={setQuestionText}
-            />
+            {editPollHash && (
+              <button
+                type="button"
+                onClick={() => (window.location.href = `/admin/${editPollHash}`)}
+                className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition hover:bg-slate-100"
+                style={{ background: '#EDE6FF', color: '#1A1033' }}
+              >
+                {t('create.cancel')}
+              </button>
+            )}
           </div>
-          <p className="mt-3 text-xs leading-relaxed shrink-0" style={{ color: '#4E4669', fontFamily: "'JetBrains Mono', monospace" }}>
-            Format: # Name → ## Question → [] optional / [x] multiselect → - Option 1 - Option 2
-          </p>
         </div>
       </div>
     </form>
