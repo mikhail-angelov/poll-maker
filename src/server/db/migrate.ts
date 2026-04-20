@@ -63,7 +63,7 @@ export async function migrate(db: sqlite3.Database) {
   console.log('Database migration completed');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   const db = createDb();
   migrate(db.sqlite)
     .then(() => {

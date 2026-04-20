@@ -9,7 +9,6 @@
   "author": {
     "name": "Mikhail Angelov"
   },
-  "type": "module",
   "scripts": {
     "dev": "npm run dev:api & npm run dev:web",
     "dev:api": "tsx watch src/server/index.ts",

@@ -3,10 +3,6 @@ import { migrate } from "./db/migrate";
 import { createApp } from "./routes";
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function main() {
   // Create and migrate database
@@ -23,7 +19,7 @@ async function main() {
     app.use(express.static(clientDistPath));
 
     // For any non-API route, serve the index.html
-    app.get("*", (req, res) => {
+    app.get("*", (req: express.Request, res: express.Response) => {
       if (!req.path.startsWith("/api")) {
         res.sendFile(path.join(clientDistPath, "index.html"));
       }
