@@ -3,10 +3,10 @@ import { useI18n } from '../i18n';
 import { createPoll, getAdminPoll, updateAdminPoll } from '../api';
 import { parseQuestionFormat, serializeQuestionFormat } from '../../shared/questionFormat';
 import { validatePollInput } from '../../shared/validation';
-import { MicroMDEditor } from 'micro-md-editor/preact';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorList } from '../components/ErrorList';
 import { CARD_SHADOW } from '../styles';
+import { Editor } from '../components/Editor';
 
 const DEFAULT_QUESTION_TEXT = `# Id
 ## Type your email
@@ -137,7 +137,7 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
 
       {/* Main content - scrollable on mobile */}
       <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col lg:flex-row gap-4 p-4 lg:p-6">
+        <div className="flex flex-col lg:h-full lg:flex-row gap-4 p-4 lg:p-6">
           {/* Left column: meta + actions - full width on mobile, fixed width on desktop */}
           <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-4">
             {/* Poll name - simplified for mobile */}
@@ -224,9 +224,9 @@ export function CreatePollPage({ editPollHash }: CreatePollPageProps) {
                 </button>
               </div>
               <div className="editor-fullheight flex-1 min-h-0 rounded-xl border-2" style={{ borderColor: '#EDE6FF' }}>
-                <MicroMDEditor
+                <Editor
                   key={`${editPollHash || 'create'}-${editorKey}`}
-                  initialMarkdown={questionText}
+                  value={questionText}
                   onChange={setQuestionText}
                 />
               </div>
